@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Agents 運作原理 — LLM Wiki 教學簡報</title>
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --surface: #ffffff;
+      --primary: #2563eb;
+      --primary-light: #eff6ff;
+      --primary-dark: #1e40af;
+      --accent: #0d9488;
+      --accent-light: #f0fdfa;
+      --amber: #d97706;
+      --amber-light: #fffbeb;
+      --rose: #e11d48;
+      --rose-light: #fff1f2;
+      --text: #0f172a;
+      --text-muted: #475569;
+      --border: #e2e8f0;
+      --shadow: 0 10px 30px -5px rgba(15, 23, 42, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
+      background: linear-gradient(135deg, #eef2ff 0%, #f8fafc 50%, #f0fdfa 100%);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    /* Top Navigation Bar */
+    .topbar {
+      background: rgba(255, 255, 255, 0.9);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 700;
+      font-size: 1rem;
+      color: var(--primary-dark);
+    }
+
+    .brand-badge {
+      background: var(--primary);
+      color: #fff;
+      font-size: 0.75rem;
+      padding: 3px 8px;
+      border-radius: 6px;
+      letter-spacing: 0.5px;
+    }
+
+    .top-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .btn-outline {
+      background: #fff;
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 6px 14px;
+      border-radius: 8px;
+      font-size: 0.875rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-outline:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+      background: var(--primary-light);
+    }
+
+    .progress-track {
+      width: 100%;
+      height: 4px;
+      background: #e2e8f0;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--primary), var(--accent));
+      width: 11.1%;
+      transition: width 0.3s ease;
+    }
+
+    /* Main Slide Stage */
+    .stage {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 28px 20px;
+    }
+
+    .slide {
+      display: none;
+      width: 100%;
+      max-width: 1020px;
+      min-height: 560px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      box-shadow: var(--shadow);
+      padding: 40px 48px 32px;
+      flex-direction: column;
+      justify-content: space-between;
+      animation: fadeIn 0.3s ease;
+    }
+
+    .slide.active {
+      display: flex;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .slide-header {
+      margin-bottom: 24px;
+    }
+
+    .slide-tag {
+      display: inline-block;
+      background: var(--primary-light);
+      color: var(--primary);
+      font-size: 0.8rem;
+      font-weight: 700;
+      padding: 4px 12px;
+      border-radius: 999px;
+      margin-bottom: 10px;
+    }
+
+    .slide-title {
+      font-size: 1.85rem;
+      font-weight: 800;
+      line-height: 1.3;
+      color: var(--text);
+    }
+
+    .slide-subtitle {
+      font-size: 1.05rem;
+      color: var(--text-muted);
+      margin-top: 6px;
+      line-height: 1.5;
+    }
+
+    .slide-body {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 20px;
+    }
+
+    .slide-footer {
+      margin-top: 24px;
+      padding-top: 14px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.82rem;
+      color: var(--text-muted);
+    }
+
+    .wiki-pill {
+      background: #f1f5f9;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      color: #334155;
+      font-size: 0.78rem;
+    }
+
+    /* Grid & Cards */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 20px;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 18px;
+    }
+
+    .grid-4 {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+    }
+
+    .card {
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 20px;
+    }
+
+    .card.blue { background: var(--primary-light); border-color: #bfdbfe; }
+    .card.teal { background: var(--accent-light); border-color: #99f6e4; }
+    .card.amber { background: var(--amber-light); border-color: #fde68a; }
+    .card.rose { background: var(--rose-light); border-color: #fecdd3; }
+
+    .card h3 {
+      font-size: 1.1rem;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .card p, .card li {
+      font-size: 0.95rem;
+      line-height: 1.6;
+      color: #334155;
+    }
+
+    .card ul {
+      padding-left: 18px;
+      margin-top: 6px;
+    }
+
+    /* Formula Banner */
+    .formula-box {
+      background: #0f172a;
+      color: #f8fafc;
+      padding: 18px 24px;
+      border-radius: 14px;
+      text-align: center;
+      font-size: 1.25rem;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+
+    .formula-box span.hl-blue { color: #60a5fa; }
+    .formula-box span.hl-teal { color: #2dd4bf; }
+    .formula-box span.hl-amber { color: #fbbf24; }
+    .formula-box span.hl-rose { color: #fb7185; }
+
+    /* Comparison Table */
+    table.cmp-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.95rem;
+    }
+
+    table.cmp-table th, table.cmp-table td {
+      border: 1px solid var(--border);
+      padding: 13px 16px;
+      text-align: left;
+      line-height: 1.5;
+    }
+
+    table.cmp-table th {
+      background: #f1f5f9;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    table.cmp-table tr.highlight-row td {
+      background: var(--primary-light);
+      font-weight: 600;
+    }
+
+    /* Interactive ReAct Simulator */
+    .react-controls {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+
+    .step-btn {
+      padding: 8px 14px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: #fff;
+      font-weight: 600;
+      font-size: 0.88rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .step-btn.active {
+      background: var(--primary);
+      color: #fff;
+      border-color: var(--primary);
+    }
+
+    .react-log {
+      background: #0f172a;
+      color: #e2e8f0;
+      border-radius: 14px;
+      padding: 20px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.92rem;
+      line-height: 1.7;
+      min-height: 210px;
+    }
+
+    .log-entry {
+      margin-bottom: 10px;
+      padding: 8px 12px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    .badge-thought { color: #fbbf24; font-weight: 700; }
+    .badge-action { color: #60a5fa; font-weight: 700; }
+    .badge-obs { color: #2dd4bf; font-weight: 700; }
+    .badge-ans { color: #a7f3d0; font-weight: 700; }
+
+    /* Quiz Styling */
+    .quiz-item {
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px 18px;
+    }
+
+    .quiz-q {
+      font-weight: 700;
+      margin-bottom: 8px;
+      font-size: 0.96rem;
+    }
+
+    .quiz-opts {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .quiz-opt {
+      padding: 6px 12px;
+      border-radius: 8px;
+      border: 1px solid #cbd5e1;
+      background: #fff;
+      cursor: pointer;
+      font-size: 0.88rem;
+      transition: 0.15s;
+    }
+
+    .quiz-opt:hover {
+      background: var(--primary-light);
+      border-color: var(--primary);
+    }
+
+    .quiz-opt.correct {
+      background: #dcfce7;
+      border-color: #16a34a;
+      color: #14532d;
+      font-weight: 700;
+    }
+
+    .quiz-opt.wrong {
+      background: #fee2e2;
+      border-color: #dc2626;
+      color: #7f1d1d;
+    }
+
+    .quiz-feedback {
+      margin-top: 6px;
+      font-size: 0.85rem;
+      color: var(--primary-dark);
+      font-weight: 600;
+    }
+
+    /* Bottom Controls */
+    .bottombar {
+      background: #fff;
+      border-top: 1px solid var(--border);
+      padding: 14px 24px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .nav-btn {
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      padding: 10px 22px;
+      border-radius: 10px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .nav-btn:disabled {
+      background: #cbd5e1;
+      cursor: not-allowed;
+    }
+
+    .nav-btn:hover:not(:disabled) {
+      background: var(--primary-dark);
+    }
+
+    .slide-counter {
+      font-weight: 700;
+      font-size: 0.95rem;
+      color: var(--text-muted);
+      min-width: 80px;
+      text-align: center;
+    }
+
+    /* Modal */
+    .modal-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.55);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .modal-backdrop.open {
+      display: flex;
+    }
+
+    .modal-card {
+      background: #fff;
+      max-width: 780px;
+      width: 100%;
+      border-radius: 16px;
+      padding: 28px;
+      max-height: 85vh;
+      overflow-y: auto;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+    }
+
+    @media (max-width: 768px) {
+      .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
+      .slide { padding: 24px 20px; min-height: auto; }
+      .slide-title { font-size: 1.45rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navigation -->
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-badge">LLM Wiki 教學簡報</span>
+      <span>AI Agents 運作原理入門</span>
+    </div>
+    <div class="top-actions">
+      <button class="btn-outline" onclick="toggleModal(true)">📚 查看 Wiki 來源對照表</button>
+    </div>
+  </header>
+  <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+
+  <!-- Main Slide Stage -->
+  <main class="stage">
+
+    <!-- SLIDE 1: Cover -->
+    <section class="slide active" data-index="1">
+      <div class="slide-header">
+        <span class="slide-tag">課程導論 · 零基礎圖解</span>
+        <h1 class="slide-title">AI Agents 是什麼？<br>從「聊天機器人」進化為「自主行動夥伴」</h1>
+        <p class="slide-subtitle">本簡報完全基於 <strong>ai-agents-wiki</strong> 知識庫（融合 5 篇核心技術文獻）生成，帶你用 5 分鐘看懂 AI Agent 的大腦、記憶、工具與自我反思機制。</p>
+      </div>
+      <div class="slide-body">
+        <div class="grid-3">
+          <div class="card blue">
+            <h3>🧠 1. 核心架構</h3>
+            <p>認識 Agent 的四大黃金元件，以及它和一般 ChatGPT 對話、固定工作流的本質差異。</p>
+          </div>
+          <div class="card teal">
+            <h3>🔄 2. 思考與行動迴圈</h3>
+            <p>拆解大腦如何把複雜任務切成小步驟，並透過 <strong>ReAct 迴圈</strong>一邊查資料一邊修正方向。</p>
+          </div>
+          <div class="card amber">
+            <h3>🪞 3. 工具與自我反思</h3>
+            <p>了解 AI 如何呼叫外部 API 長出手腳，並在交卷前透過 <strong>Reflection</strong> 自我檢查除錯。</p>
+          </div>
+        </div>
+      </div>
+      <footer class="slide-footer">
+        <span>提示：可使用鍵盤左右方向鍵 (← / →) 切換投影片</span>
+        <span class="wiki-pill">知識來源：index.md [Source 1–5]</span>
+      </footer>
+    </section>
+
+    <!-- SLIDE 2: Core Formula & Analogy -->
+    <section class="slide" data-index="2">
+      <div class="slide-header">
+        <span class="slide-tag">概念 01 · 核心定義與類比</span>
+        <h1 class="slide-title">AI Agent 的黃金公式與「餐廳主廚」類比</h1>
+        <p class="slide-subtitle">如果把傳統聊天機器人比喻為「只會回答食譜的顧問」，AI Agent 就是「能自己進廚房把菜做出來的主廚」。</p>
+      </div>
+      <div class="slide-body">
+        <div class="formula-box">
+          AI Agent = <span class="hl-blue">LLM (核心大腦)</span> + <span class="hl-amber">Planning (規劃)</span> + <span class="hl-teal">Memory (記憶)</span> + <span class="hl-rose">Tool Use (工具使用)</span>
+        </div>
+        <div class="grid-2">
+          <div class="card blue">
+            <h3>🧠 LLM 大腦 + 📋 Planning 規劃</h3>
+            <p>接到「準備三人晚餐」的目標後，大腦會自動拆解子任務：先看食材 → 決定菜單 → 安排烹飪先後順序。</p>
+          </div>
+          <div class="card teal">
+            <h3>🗂️ Memory 記憶 + 🔧 Tool Use 工具</h3>
+            <p><strong>記憶</strong>負責記住客人的飲食禁忌（短期）與過往食譜（長期）；<strong>工具</strong>則是爐具、烤箱與外送採購 App。</p>
+          </div>
+        </div>
+      </div>
+      <footer class="slide-footer">
+        <span>核心架構公式源自 Lilian Weng (2023)</span>
+        <span class="wiki-pill">知識來源：wiki/01-agent-overview.md [Source 1]</span>
+      </footer>
+    </section>
+
+    <!-- SLIDE 3: Comparison -->
+    <section class="slide" data-index="3">
+      <div class="slide-header">
+        <span class="slide-tag">概念 01 · 觀念釐清</span>
+        <h1 class="slide-title">Chatbot vs. Workflow vs. AI Agent 差在哪？</h1>
+        <p class="slide-subtitle">並不是所有 AI 應用都需要做成 Agent！了解三者邊界才能選對最適合的工具。</p>
+      </div>
+      <div class="slide-body">
+        <table class="cmp-table">
+          <thead>
+            <tr>
+              <th style="width: 18%;">比較維度</th>
+              <th style="width: 26%;">傳統 Chatbot（聊天機器人）</th>
+              <th style="width: 28%;">Workflow（固定工作流）</th>
+              <th style="width: 28%;">AI Agent（自主代理）</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>決策控制權</strong></td>
+              <td>完全由人類一問一答引導</td>
+              <td>由工程師預先寫死程式碼路徑</td>
+              <td><strong>由 LLM 動態決定下一步路徑</strong></td>
+            </tr>
+            <tr>
+              <td><strong>外部行動力</strong></td>
+              <td>僅能產生文字回覆</td>
+              <td>按固定順序呼叫指定 API</td>
+              <td><strong>自主挑選工具並根據結果調整</strong></td>
+            </tr>
+            <tr class="highlight-row">
+              <td><strong>最佳適用場景</strong></td>
+              <td>腦力激盪、單次問答翻譯</td>
+              <td>步驟固定、規則明確的標準流程</td>
+              <td><strong>步驟無法預先窮舉的複雜開放任務</strong></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <footer class="slide-footer">
+        <span>設計原則：步驟固定用 Workflow，需要動態應變才用 Agent</span>
+        <span class="wiki-pill">知識來源：wiki/01-agent-overview.md [Source 3]</span>
+      </footer>
+    </section>
+
+    <!-- SLIDE 4: Planning -->
+    <section class="slide" data-index="4">
+      <div class="slide-header">
+        <span class="slide-tag">概念 02 · 任務規劃 (Planning)</span>
+        <h1 class="slide-title">大腦如何面對複雜任務？先拆解再執行</h1>
+        <p class="slide-subtitle">人類不會一口氣寫完十萬字論文，AI Agent 也需要透過「子目標拆解（Subgoal Decomposition）」降低出錯率。</p>
+      </div>
+      <div class="slide-body">
+        <div class="card">
+          <h3>🎯 範例指令：「幫我規劃下週去東京的 3 天自由行並寄出行程表」</h3>
+          <p>若直接要求模型一次輸出，極易遺漏細節或編造營業時間。透過 <strong>Chain-of-Thought（思維鏈）</strong> 拆解後：</p>
+        </div>
+        <div class="grid-3">
+          <div class="card blue">
+            <h3>步驟 1：條件確認</h3>
+            <p>查詢下週東京天氣預報，確認室內與戶外景點的分配比例。</p>
+          </div>
+          <div class="card teal">
+            <h3>步驟 2：路線與檢索</h3>
+            <p>依區域（新宿、淺草）檢索高評價餐廳與交通時間，排定每日時間軸。</p>
+          </div>
+          <div class="card amber">
+            <h3>步驟 3：格式化與交付</h3>
+            <p>檢查是否有時間衝突，將最終行程表整理成文件並呼叫郵件工具寄出。</p>
+          </div>
+        </div>
+      </div>
+      <footer class="slide-footer">
+        <span>先規劃大綱再逐步落實，是提升 Agent 成功率的關鍵</span>
+        <span class="wiki-pill">知識來源：wiki/02-planning-and-react.md [Source 1, Source 4]</span>
+      </footer>
+    </section>
+
+    <!-- SLIDE 5: Interactive ReAct Simulator -->
+    <section class="slide" data-index="5">
+      <div class="slide-header">
+        <span class="slide-tag">概念 02 · 互動模擬器</span>
+        <h1 class="slide-title">ReAct 迴圈：思考 (Thought) × 行動 (Action) × 觀察 (Observation)</h1>
+        <p class="slide-subtitle">點擊下方按鈕，親自體驗 Agent 如何回答：「今天台北適合穿短袖嗎？」</p>
+      </div>
+      <div class="slide-body">
+        <div class="react-controls">
+          <button class="step-btn active" onclick="setReactStep(1)">1. Thought (思考)</button>
+          <button class="step-btn" onclick="setReactStep(2)">2. Action (行動)</button>
+          <button class="step-btn" onclick="setReactStep(3)">3. Observation (觀察)</button>
+          <button class="step-btn" onclick="setReactStep(4)">4. Thought 2 & 最終回答</button>
+        </div>
+        <div class="react-log" id="reactLog">
+          <div class="log-entry"><span class="badge-thought">[Thought 1 思考]</span> 使用者問今天台北適合穿短袖嗎。我無法憑空猜測即時氣溫，必須先查詢台北今天的氣象預報。</div>
+        </div>
+      </div>
+      <footer class="slide-footer">
+        <span>交錯執行推理與外部觀察，可大幅減少 AI 憑空捏造（幻覺）</span>
+        <span class="wiki-pill">知識來源：wiki/02-planning-and-react.md [Source 2]</span>
+      </footer>
+    </section>
+
+    <!-- SLIDE 6: Memory System -->
+    <section class="slide" data-index="6">
+      <div class="slide-header">
+        <span class="slide-tag">概念 03 · 記憶系統 (Memory)</span>
+        <h1 class="slide-title">短期記憶 vs. 長期記憶：工作桌面與圖書館</h1>
+        <p class="slide-subtitle">沒有記憶的 AI 每次對話都像「金魚只有七秒記憶」；完整的記憶架構讓 Agent 能累積經驗。</p>
+      </div>
+      <div class="slide-body">
+        <div class="grid-2">
+          <div class="card amber">
+            <h3>📝 短期記憶（Short-Term Memory）</h3>
+            <ul>
+              <li><strong>技術載體</strong>：模型的上下文視窗（Context Window）。</li>
+              <li><strong>生活類比</strong>：書桌上的「便利貼與草稿紙」。</li>
+              <li><strong>存放內容</strong>：當下對話紀錄、剛執行的 ReAct 軌跡、以及上一輪失敗的反思筆記。</li>
+              <li><strong>限制</strong>：桌面空間有限，塞滿會遺忘最早的內容。</li>
+            </ul>
+          </div>
+          <div class="card blue">
+            <h3>🏛️ 長期記憶（Long-Term Memory）</h3>
+            <ul>
+              <li><strong>技術載體</strong>：外部向量資料庫（Vector Store）與知識庫（如本作業的 LLM Wiki）。</li>
+              <li><strong>生活類比</strong>：身後的「大型圖書館書架」。</li>
+              <li><strong>運作方式</strong>：平時不佔用桌面，需要時透過語意檢索（Retrieval）把最相關的資料抽到桌面上使用。</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <footer class="slide-footer">
+        <span>本作業建立的 LLM Wiki，正是扮演 Agent 的「結構化長期記憶庫」</span>
+        <span class="wiki-pill">知識來源：wiki/03-memory-system.md [Source 1, Source 5]</span>
+      </footer>
+    </section>
+
+    <!-- SLIDE 7: Tool Use -->
+    <section class="slide" data-index="7">
+      <div class="slide-header">
+        <span class="slide-tag">概念 04 · 工具使用 (Tool Use)</span>
+        <h1 class="slide-title">讓 AI 長出手腳：Function Calling 運作三步驟</h1>
+        <p class="slide-subtitle">LLM 本身只會輸出文字，它並不會「親自」按滑鼠，而是透過與程式執行層（Runtime）協作來操作工具。</p>
+      </div>
+      <div class="slide-body">
+        <div class="grid-3">
+          <div class="card blue">
+            <h3>1️⃣ LLM 輸出結構化指令</h3>
+            <p>模型判斷需要算數學或查資料時，輸出標準 JSON 呼叫請求，例如：<br><code>calc_tax(income=850000)</code></p>
+          </div>
+          <div class="card teal">
+            <h3>2️⃣ 系統執行層 (Runtime) 接手</h3>
+            <p>外部程式碼接收 JSON 指令，實際執行 Python 計算或呼叫官方 API，取得精準結果：<code>{"tax": 42500}</code></p>
+          </div>
+          <div class="card amber">
+            <h3>3️⃣ 回傳數據組織回答</h3>
+            <p>系統把真實數據塞回給 LLM 作為 Observation，由 LLM 翻譯成自然流暢的人類語言回覆。</p>
+          </div>
+        </div>
+        <div class="card">
+          <h3>💡 工具設計關鍵（Agent-Computer Interface, ACI）</h3>
+          <p>Anthropic 研究指出：提供給 Agent 的工具必須具備<strong>清楚的用途說明、防呆參數格式與明確錯誤提示</strong>，才能避免模型呼叫失敗。</p>
+        </div>
+      </div>
+      <footer class="slide-footer">
+        <span>Tool Use 讓語言模型突破預訓練知識截止日期與數學計算短板</span>
+        <span class="wiki-pill">知識來源：wiki/04-tool-use.md [Source 1, Source 3, Source 4]</span>
+      </footer>
+    </section>
+
+    <!-- SLIDE 8: Reflection & Multi-Agent -->
+    <section class="slide" data-index="8">
+      <div class="slide-header">
+        <span class="slide-tag">概念 05 · 自我反思與設計模式</span>
+        <h1 class="slide-title">Reflection（自我反思）：做錯了怎麼自己改？</h1>
+        <p class="slide-subtitle">Andrew Ng 指出：讓 AI 透過「反覆檢查迭代（Iterative Workflow）」工作，表現往往超越單次生成的更大模型。</p>
+      </div>
+      <div class="slide-body">
+        <div class="grid-2">
+          <div class="card rose">
+            <h3>🪞 Reflexion 自我修正三元迴圈</h3>
+            <ul>
+              <li><strong>Actor（行動者）</strong>：先產出初版解答或程式碼。</li>
+              <li><strong>Evaluator（評估器）</strong>：對照規則檢查是否出錯或超譯。</li>
+              <li><strong>Self-Reflection（反思模組）</strong>：若未通過，把「失敗原因」寫成文字規則存入短期記憶，引導下一輪避開相同錯誤！</li>
+            </ul>
+          </div>
+          <div class="card blue">
+            <h3>🧩 四大 Agentic 設計模式總覽</h3>
+            <ul>
+              <li><strong>Reflection（自我反思）</strong>：自己審查草稿並改寫。</li>
+              <li><strong>Tool Use（工具使用）</strong>：呼叫搜尋、程式與 API。</li>
+              <li><strong>Planning（任務規劃）</strong>：先拆解多步驟計畫。</li>
+              <li><strong>Multi-Agent（多代理協作）</strong>：分飾「撰稿者」與「審查員」分工把關。</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <footer class="slide-footer">
+        <span>這套「生成 → 檢查 → 反思修正」迴圈，也是本作業 Workflow 的核心設計</span>
+        <span class="wiki-pill">知識來源：wiki/05-reflection-loop.md [Source 4, Source 5]</span>
+      </footer>
+    </section>
+
+    <!-- SLIDE 9: Interactive Quiz & Summary -->
+    <section class="slide" data-index="9">
+      <div class="slide-header">
+        <span class="slide-tag">隨堂檢核 · 互動小測驗</span>
+        <h1 class="slide-title">3 題快速驗收：你已經掌握 AI Agent 原理了嗎？</h1>
+        <p class="slide-subtitle">點擊選項立即測試理解程度（全部題目皆出自本 Wiki 核心條目）。</p>
+      </div>
+      <div class="slide-body">
+        <div class="quiz-item">
+          <div class="quiz-q">Q1. 如果一個任務的執行步驟完全固定、可預先窮舉，根據 Anthropic 建議應該優先採用哪種架構？</div>
+          <div class="quiz-opts">
+            <button class="quiz-opt" onclick="checkQuiz(this, true, '答對了！步驟固定且可預測時，使用可控性高的 Workflow 最簡單有效（Source 3）。')">A. 固定路徑的 Workflow</button>
+            <button class="quiz-opt" onclick="checkQuiz(this, false, '再想想看：自主 Agent 適合步驟無法預先窮舉的開放任務喔！')">B. 全自主多代理 Agent</button>
+          </div>
+          <div class="quiz-feedback"></div>
+        </div>
+
+        <div class="quiz-item">
+          <div class="quiz-q">Q2. 在 ReAct 迴圈中，LLM 呼叫外部天氣 API 並收到「28°C 晴天」的回傳數據，這一步稱為什麼？</div>
+          <div class="quiz-opts">
+            <button class="quiz-opt" onclick="checkQuiz(this, false, 'Action 是發出呼叫指令的動作，收到回傳結果是下一步喔！')">A. Action（行動）</button>
+            <button class="quiz-opt" onclick="checkQuiz(this, true, '完全正確！接收環境或工具回傳的真實數據稱為 Observation（觀察）（Source 2）。')">B. Observation（觀察）</button>
+          </div>
+          <div class="quiz-feedback"></div>
+        </div>
+
+        <div class="quiz-item">
+          <div class="quiz-q">Q3. Reflexion 框架如何讓 Agent 在「不重新訓練模型權重」的情況下從錯誤中學習？</div>
+          <div class="quiz-opts">
+            <button class="quiz-opt" onclick="checkQuiz(this, true, '答對了！透過語言自我反思分析失敗原因並存入短期記憶，引導下一輪修正（Source 5）。')">A. 將失敗原因寫成語言反思存入記憶</button>
+            <button class="quiz-opt" onclick="checkQuiz(this, false, 'Reflexion 強調的是 Verbal Reinforcement（語言強化），不需要微調權重喔！')">B. 每次出錯都重新微調模型參數</button>
+          </div>
+          <div class="quiz-feedback"></div>
+        </div>
+      </div>
+      <footer class="slide-footer">
+        <span>恭喜完成學習！可點擊右上角「查看 Wiki 來源對照表」檢視完整溯源結構</span>
+        <span class="wiki-pill">知識來源：wiki/01–05 整合總結</span>
+      </footer>
+    </section>
+
+  </main>
+
+  <!-- Bottom Controls -->
+  <footer class="bottombar">
+    <button class="nav-btn" id="prevBtn" onclick="changeSlide(-1)" disabled>← 上一頁</button>
+    <span class="slide-counter" id="slideCounter">1 / 9</span>
+    <button class="nav-btn" id="nextBtn" onclick="changeSlide(1)">下一頁 →</button>
+  </footer>
+
+  <!-- Wiki Source Mapping Modal -->
+  <div class="modal-backdrop" id="mappingModal" onclick="if(event.target===this) toggleModal(false)">
+    <div class="modal-card">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+        <h2 style="font-size:1.3rem;">📚 簡報頁面與 LLM Wiki 條目對應表</h2>
+        <button class="btn-outline" onclick="toggleModal(false)">✕ 關閉</button>
+      </div>
+      <p style="font-size:0.9rem; color:#475569; margin-bottom:14px;">本簡報嚴格遵守 <code>AGENTS.md</code> 溯源規範，每一張投影片皆對應至 <code>ai-agents-wiki</code> 內的特定條目與原始文獻：</p>
+      <table class="cmp-table" style="font-size:0.86rem;">
+        <thead>
+          <tr>
+            <th>頁碼</th>
+            <th>投影片標題</th>
+            <th>對應 Wiki 檔案</th>
+            <th>對應 Ingest 文獻</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>Slide 1</td><td>AI Agents 是什麼？（導論）</td><td><code>index.md</code></td><td>Source 1 – 5</td></tr>
+          <tr><td>Slide 2</td><td>黃金公式與餐廳主廚類比</td><td><code>wiki/01-agent-overview.md</code></td><td>Source 1 (Lilian Weng)</td></tr>
+          <tr><td>Slide 3</td><td>Chatbot vs. Workflow vs. Agent</td><td><code>wiki/01-agent-overview.md</code></td><td>Source 3 (Anthropic)</td></tr>
+          <tr><td>Slide 4</td><td>Planning 任務拆解機制</td><td><code>wiki/02-planning-and-react.md</code></td><td>Source 1, Source 4</td></tr>
+          <tr><td>Slide 5</td><td>ReAct 迴圈互動模擬器</td><td><code>wiki/02-planning-and-react.md</code></td><td>Source 2 (Yao et al.)</td></tr>
+          <tr><td>Slide 6</td><td>短期記憶與長期記憶系統</td><td><code>wiki/03-memory-system.md</code></td><td>Source 1, Source 5</td></tr>
+          <tr><td>Slide 7</td><td>Tool Use 工具呼叫三步驟</td><td><code>wiki/04-tool-use.md</code></td><td>Source 1, 3, 4</td></tr>
+          <tr><td>Slide 8</td><td>Reflection 自我反思與設計模式</td><td><code>wiki/05-reflection-loop.md</code></td><td>Source 4, Source 5</td></tr>
+          <tr><td>Slide 9</td><td>初學者隨堂測驗與總結</td><td><code>wiki/01–05</code> 整合</td><td>Source 2, 3, 5</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    let currentSlide = 1;
+    const totalSlides = 9;
+
+    function updateSlide() {
+      document.querySelectorAll('.slide').forEach(el => {
+        el.classList.remove('active');
+        if (parseInt(el.dataset.index) === currentSlide) {
+          el.classList.add('active');
+        }
+      });
+      document.getElementById('slideCounter').textContent = `${currentSlide} / ${totalSlides}`;
+      document.getElementById('prevBtn').disabled = currentSlide === 1;
+      document.getElementById('nextBtn').disabled = currentSlide === totalSlides;
+      document.getElementById('progressFill').style.width = `${(currentSlide / totalSlides) * 100}%`;
+    }
+
+    function changeSlide(delta) {
+      const next = currentSlide + delta;
+      if (next >= 1 && next <= totalSlides) {
+        currentSlide = next;
+        updateSlide();
+      }
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight' || e.key === ' ') {
+        if (document.activeElement.tagName !== 'BUTTON') {
+          changeSlide(1);
+        }
+      } else if (e.key === 'ArrowLeft') {
+        changeSlide(-1);
+      } else if (e.key === 'Escape') {
+        toggleModal(false);
+      }
+    });
+
+    function toggleModal(open) {
+      document.getElementById('mappingModal').classList.toggle('open', open);
+    }
+
+    const reactSteps = [
+      `<div class="log-entry"><span class="badge-thought">[Thought 1 思考]</span> 使用者問今天台北適合穿短袖嗎。我無法憑空猜測即時氣溫，必須先查詢台北今天的氣象預報。</div>`,
+      `<div class="log-entry"><span class="badge-action">[Action 1 行動]</span> 呼叫外部氣象工具：<code>get_weather(city="Taipei", date="today")</code></div>`,
+      `<div class="log-entry"><span class="badge-obs">[Observation 1 觀察]</span> 工具回傳真實數據：<code>{"temp_high": 29, "temp_low": 22, "weather": "晴時多雲"}</code></div>`,
+      `<div class="log-entry"><span class="badge-thought">[Thought 2 思考]</span> 已取得即時氣溫（白天高溫 29°C、晚間 22°C），資訊已足夠，可停止呼叫工具並生成建議。</div>
+       <div class="log-entry"><span class="badge-ans">[Final Answer 最終回答]</span> 台北今天白天高溫達 29°C 且晴朗，非常適合穿短袖！不過晚間氣溫會降至 22°C，建議隨身攜帶一件薄外套備用。</div>`
+    ];
+
+    function setReactStep(step) {
+      document.querySelectorAll('.step-btn').forEach((btn, idx) => {
+        btn.classList.toggle('active', idx < step);
+      });
+      const logEl = document.getElementById('reactLog');
+      logEl.innerHTML = reactSteps.slice(0, step).join('');
+    }
+
+    function checkQuiz(btn, isCorrect, msg) {
+      const parent = btn.closest('.quiz-item');
+      parent.querySelectorAll('.quiz-opt').forEach(b => {
+        b.classList.remove('correct', 'wrong');
+      });
+      btn.classList.add(isCorrect ? 'correct' : 'wrong');
+      parent.querySelector('.quiz-feedback').textContent = msg;
+    }
+  </script>
+</body>
+</html>
